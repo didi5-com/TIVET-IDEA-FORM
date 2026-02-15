@@ -1,0 +1,31 @@
+:root {
+  --primary: #0a3d62;
+  --font: Arial, sans-serif;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--primary);
+  line-height: 1.4;
+  padding: 16px;
+}
+
+table {
+  border: 1px solid #ddd;
+}
+
+th, td {
+  padding: 8px;
+  border: 1px solid #ddd;
+}
+
+button {
+  padding: 8px 12px;
+  margin-right: 8px;
+  cursor: pointer;
+}

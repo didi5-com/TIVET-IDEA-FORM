@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GBV Code of Conduct – IDEAS Project</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    :root {
+      --primary: #0a3d62;
+      --bg: #f5f7fa;
+      --text: #222;
+      --border: #dcdcdc;
+      --radius: 6px;
+      --font: Arial, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: var(--radius);
+    }
+
+    h1, h2 {
+      color: var(--primary);
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-top: 5px;
+    }
+
+    .radio-group,
+    .checkbox-group {
+      margin-top: 10px;
+    }
+
+    .radio-group label,
+    .checkbox-group label {
+      font-weight: normal;
+      display: block;
+      margin: 5px 0;
+    }
+
+    .legal-box {
+      border: 1px solid var(--border);
+      padding: 15px;
+      margin-top: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+      background: #fafafa;
+      white-space: pre-line;
+    }
+
+    .upload-box {
+      margin-top: 15px;
+    }
+
+    .submit-btn {
+      margin-top: 30px;
+      background: var(--primary);
+      color: white;
+      padding: 15px;
+      border: none;
+      width: 100%;
+      font-size: 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+
+    .submit-btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <h1>Federal Ministry of Education</h1>
+    <h2>Code of Conduct on Gender-Based Violence (GBV), SEA & Sexual Harassment</h2>
+
+    <form id="gbv-form">
+      <!-- PERSONAL DETAILS -->
+      <label>Full Name</label>
+      <input type="text" name="full_name" required />
+
+      <label>Organization / Firm</label>
+      <input type="text" name="organization" required />
+
+      <label>Gender of Respondent</label>
+      <div class="radio-group">
+        <label><input type="radio" name="gender" value="Male" required /> Male</label>
+        <label><input type="radio" name="gender" value="Female" /> Female</label>
+      </div>
+
+      <!-- ROLE -->
+      <label>Please tick the option that applies to you</label>
+      <select name="role" required>
+        <option value="">-- Select --</option>
+        <option>NPCU</option>
+        <option>Consultant</option>
+        <option>TSP Management</option>
+        <option>Instructor</option>
+        <option>Trainee</option>
+        <option>Contractor</option>
+        <option>Site Worker</option>
+        <option>Others</option>
+      </select>
+
+      <!-- CODE OF CONDUCT TEXT -->
+      <label>GBV Code of Conduct (Read Carefully)</label>
+      <div class="legal-box">
+I acknowledge that preventing Gender-Based Violence (GBV), Sexual Exploitation & Abuse (SEA), and Sexual Harassment is important.
+
+I understand that GBV/SEA/SH constitutes gross misconduct and may lead to sanctions, termination, or prosecution under Nigerian law.
+
+I agree that during my engagement under the IDEAS Project, I will:
+• Maintain respectful relationships
+• Not engage in sexual exploitation or abuse
+• Not engage in sexual activity with minors
+• Attend GBV/SEA/SH training when required
+• Report any incidents through official GRM channels
+
+I understand the sanctions applicable to:
+• Contractors
+• Trainers
+• Trainees
+• Support Staff
+• NPCU Staff
+
+This Code aligns with Nigerian law and World Bank Environmental & Social Standards.
+      </div>
+
+      <!-- AGREEMENT -->
+      <div class="checkbox-group">
+        <label>
+          <input type="checkbox" name="agreed" required />
+          I have read, understood, and agree to comply with this Code of Conduct
+        </label>
+      </div>
+
+      <!-- IMAGE UPLOAD -->
+      <div class="upload-box">
+        <label>Upload Image (if required for record)</label>
+        <input id="photo" type="file" accept="image/*" />
+      </div>
+
+      <!-- SIGNATURE: Draw or Upload -->
+      <label>Signature</label>
+      <div class="radio-group">
+        <label><input type="radio" name="sig_mode" value="draw" checked /> Draw</label>
+        <label><input type="radio" name="sig_mode" value="upload" /> Upload</label>
+      </div>
+      <div id="sig-draw" class="upload-box">
+        <canvas id="signature-canvas" width="500" height="200" style="border:1px solid #ccc; background:#fff; touch-action: none;"></canvas>
+        <div style="margin-top:8px;">
+          <button type="button" id="sig-clear" class="submit-btn" style="background:#999;">Clear Signature</button>
+        </div>
+      </div>
+      <div id="sig-upload" class="upload-box" style="display:none;">
+        <label>Upload Signature Image</label>
+        <input id="signature-file" type="file" accept="image/*" />
+      </div>
+
+      <label>Date</label>
+      <input type="date" name="date" required />
+
+      <button class="submit-btn" type="submit">Submit Form</button>
+    </form>
+
+    <p style="margin-top:16px">
+      Need to view the original document? 
+      <a href="./IDEAS-TVET%20GBV%20Code%20of%20Conduct.pdf" target="_blank" rel="noopener">Open the PDF</a>.
+    </p>
+
+  </div>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    // 6️⃣ Supabase initialization (project values configured)
+    const supabaseUrl = "https://wvkfkwuggvzcgjoqcfya.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2a2Zrd3VnZ3Z6Y2dqb3FjZnlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwNzcxMDUsImV4cCI6MjA4NjY1MzEwNX0.1U7qNtAcLLkovltTX7acfithEKbfgxY6qFAEawZMxZw";
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    // 7️⃣ Wire form submission to Supabase (text fields + optional image)
+    const form = document.querySelector('#gbv-form');
+
+    // Signature pad setup
+    const sigCanvas = document.getElementById('signature-canvas');
+    const sigClearBtn = document.getElementById('sig-clear');
+    const sigDrawBox = document.getElementById('sig-draw');
+    const sigUploadBox = document.getElementById('sig-upload');
+    const sigFileInput = document.getElementById('signature-file');
+    const photoInput = document.getElementById('photo');
+
+    let isDrawing = false;
+    let hasSignature = false;
+    if (sigCanvas) {
+      const ctx = sigCanvas.getContext('2d');
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#000';
+
+      const getPos = (evt) => {
+        const rect = sigCanvas.getBoundingClientRect();
+        const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+        const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+      };
+
+      const start = (evt) => {
+        isDrawing = true;
+        hasSignature = true;
+        const { x, y } = getPos(evt);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      };
+      const move = (evt) => {
+        if (!isDrawing) return;
+        const { x, y } = getPos(evt);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      };
+      const end = () => { isDrawing = false; };
+
+      sigCanvas.addEventListener('mousedown', start);
+      sigCanvas.addEventListener('mousemove', move);
+      sigCanvas.addEventListener('mouseup', end);
+      sigCanvas.addEventListener('mouseleave', end);
+      sigCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); }, { passive: false });
+      sigCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e); }, { passive: false });
+      sigCanvas.addEventListener('touchend', (e) => { e.preventDefault(); end(e); }, { passive: false });
+
+      sigClearBtn.addEventListener('click', () => {
+        ctx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+        hasSignature = false;
+      });
+    }
+
+    // Toggle signature mode
+    form.addEventListener('change', (e) => {
+      if (e.target && e.target.name === 'sig_mode') {
+        const mode = e.target.value;
+        if (mode === 'draw') {
+          sigDrawBox.style.display = '';
+          sigUploadBox.style.display = 'none';
+        } else {
+          sigDrawBox.style.display = 'none';
+          sigUploadBox.style.display = '';
+        }
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting…';
+
+      try {
+        // Handle optional image upload (photo)
+        const fileInput = photoInput;
+        let imageUrl = null;
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          const filePath = `${Date.now()}-${file.name}`.replace(/[^a-zA-Z0-9_.-]/g, '_');
+          const { error: uploadError } = await supabaseClient
+            .storage
+            .from('submissions')
+            .upload(filePath, file);
+          if (uploadError) {
+            alert('Image upload failed: ' + (uploadError.message || 'unknown error'));
+            console.error('Photo upload error', uploadError);
+            return;
+          }
+          const { data } = supabaseClient
+            .storage
+            .from('submissions')
+            .getPublicUrl(filePath);
+          imageUrl = data.publicUrl;
+        }
+
+        // Handle signature (draw or upload)
+        const mode = form.querySelector('input[name="sig_mode"]:checked')?.value || 'draw';
+        let signatureUrl = null;
+        if (mode === 'draw') {
+          if (!hasSignature) {
+            alert('Please draw your signature or switch to upload.');
+            return;
+          }
+          const blob = await new Promise((resolve) => sigCanvas.toBlob(resolve, 'image/png'));
+          const sigPath = `signatures/${Date.now()}-signature.png`;
+          const { error: sigErr } = await supabaseClient
+            .storage
+            .from('submissions')
+            .upload(sigPath, blob);
+          if (sigErr) {
+            alert('Signature upload failed: ' + (sigErr.message || 'unknown error'));
+            console.error('Signature draw upload error', sigErr);
+            return;
+          }
+          signatureUrl = supabaseClient.storage.from('submissions').getPublicUrl(sigPath).data.publicUrl;
+        } else {
+          if (!sigFileInput || !sigFileInput.files || sigFileInput.files.length === 0) {
+            alert('Please choose a signature image to upload.');
+            return;
+          }
+          const sigFile = sigFileInput.files[0];
+          const sigPath = `signatures/${Date.now()}-${sigFile.name}`.replace(/[^a-zA-Z0-9_.-\/]/g, '_');
+          const { error: sigUploadErr } = await supabaseClient
+            .storage
+            .from('submissions')
+            .upload(sigPath, sigFile);
+          if (sigUploadErr) {
+            alert('Signature upload failed: ' + (sigUploadErr.message || 'unknown error'));
+            console.error('Signature file upload error', sigUploadErr);
+            return;
+          }
+          signatureUrl = supabaseClient.storage.from('submissions').getPublicUrl(sigPath).data.publicUrl;
+        }
+
+        const payload = {
+          full_name: form.full_name.value.trim(),
+          organization: form.organization.value.trim(),
+          gender: form.gender.value,
+          role: form.role.value,
+          agreed: true, // checkbox enforced by required attribute
+          image_url: imageUrl,
+          signature_url: signatureUrl,
+          signature_date: form.date.value
+        };
+
+        const { error } = await supabaseClient
+          .from('submissions')
+          .insert(payload);
+
+        if (error) {
+          alert('Submission failed: ' + (error.message || 'unknown error'));
+          console.error(error);
+        } else {
+          alert('Form submitted successfully');
+          form.reset();
+          // Reset signature state
+          const ctx = sigCanvas.getContext('2d');
+          ctx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+          hasSignature = false;
+        }
+      } catch (err) {
+        alert('Unexpected error during submission: ' + (err.message || err));
+        console.error(err);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Form';
+      }
+    });
+  </script>
+</body>
+</html>
