@@ -161,11 +161,8 @@ This Code aligns with Nigerian law and World Bank Environmental & Social Standar
         </label>
       </div>
 
-      <!-- IMAGE UPLOAD -->
-      <div class="upload-box">
-        <label>Upload Image (if required for record)</label>
-        <input id="photo" type="file" accept="image/*" />
-      </div>
+      <!-- IMAGE UPLOAD REMOVED -->
+      <!-- Profile photo upload has been removed per requirements. -->
 
       <!-- SIGNATURE: Draw or Upload -->
       <label>Signature</label>
@@ -212,7 +209,6 @@ This Code aligns with Nigerian law and World Bank Environmental & Social Standar
     const sigDrawBox = document.getElementById('sig-draw');
     const sigUploadBox = document.getElementById('sig-upload');
     const sigFileInput = document.getElementById('signature-file');
-    const photoInput = document.getElementById('photo');
 
     let isDrawing = false;
     let hasSignature = false;
@@ -279,27 +275,8 @@ This Code aligns with Nigerian law and World Bank Environmental & Social Standar
       submitBtn.textContent = 'Submitting…';
 
       try {
-        // Handle optional image upload (photo)
-        const fileInput = photoInput;
-        let imageUrl = null;
-        if (fileInput && fileInput.files && fileInput.files.length > 0) {
-          const file = fileInput.files[0];
-          const filePath = `${Date.now()}-${file.name}`.replace(/[^a-zA-Z0-9_.-]/g, '_');
-          const { error: uploadError } = await supabaseClient
-            .storage
-            .from('submissions')
-            .upload(filePath, file);
-          if (uploadError) {
-            alert('Image upload failed: ' + (uploadError.message || 'unknown error'));
-            console.error('Photo upload error', uploadError);
-            return;
-          }
-          const { data } = supabaseClient
-            .storage
-            .from('submissions')
-            .getPublicUrl(filePath);
-          imageUrl = data.publicUrl;
-        }
+        // Profile photo upload removed; keep image_url as null
+        const imageUrl = null;
 
         // Handle signature (draw or upload)
         const mode = form.querySelector('input[name="sig_mode"]:checked')?.value || 'draw';

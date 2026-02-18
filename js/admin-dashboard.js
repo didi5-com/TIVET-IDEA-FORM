@@ -42,6 +42,7 @@
           <td>${h(d.signature_date || dateStr)}</td>
           <td>
             <button data-action="edit" data-id="${h(d.id)}">Edit</button>
+            <button data-action="delete" data-id="${h(d.id)}" style="margin-left:6px;">Delete</button>
           </td>
         `;
       } else {
@@ -208,6 +209,185 @@
     a.click();
   }
 
+  async function ensurePdfLib() {
+    if (window.PDFLib) return;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Failed to load pdf-lib'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensureJSZip() {
+    if (window.JSZip) return;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Failed to load JSZip'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function getLatestMapping() {
+    const { data, error } = await window.supabaseClient
+      .from('pdf_mappings')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    return (data && data[0]) ? data[0] : null;
+  }
+
+  async function loadTemplateArrayBuffer() {
+    const res = await fetch('./IDEAS-TVET%20GBV%20Code%20of%20Conduct.pdf');
+    if (!res.ok) throw new Error('Failed to load template PDF');
+    return await res.arrayBuffer();
+  }
+
+  async function fillPdfClientSide(submission, mapping) {
+    await ensurePdfLib();
+    const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
+    const templateBytes = await loadTemplateArrayBuffer();
+    const pdfDoc = await PDFDocument.load(templateBytes);
+    const pages = pdfDoc.getPages();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    const map = mapping?.mapping || mapping; // support raw mapping
+    const fields = map?.fields || [];
+    for (const f of fields) {
+      const pageIdx = (typeof f.page === 'number' && f.page >= 0 && f.page < pages.length) ? f.page : 0;
+      const page = pages[pageIdx];
+      const pageW = page.getWidth();
+      const pageH = page.getHeight();
+      const uiW = map.uiW || pageW;
+      const uiH = map.uiH || pageH;
+      const scaleX = pageW / uiW;
+      const scaleY = pageH / uiH;
+      const val = submission[f.name] ?? '';
+      if (f.type === 'image' && f.name === 'signature_url' && submission.signature_url) {
+        try {
+          const sigRes = await fetch(submission.signature_url);
+          const sigBytes = await sigRes.arrayBuffer();
+          let img;
+          // try png first
+          try { img = await pdfDoc.embedPng(sigBytes); } catch (_) { img = await pdfDoc.embedJpg(sigBytes); }
+          const xPt = (f.x ?? 0) * scaleX;
+          const wPt = (f.w || 120) * scaleX;
+          const hPt = (f.h || 48) * scaleY;
+          const yPtTop = (f.y ?? 0) * scaleY;
+          const yPt = pageH - yPtTop - hPt;
+          page.drawImage(img, { x: xPt, y: yPt, width: wPt, height: hPt });
+        } catch (e) {
+          console.warn('Failed to embed signature image', e);
+        }
+      } else if (typeof val === 'string' || typeof val === 'number') {
+        const size = f.fontSize || 12;
+        const xPt = (f.x ?? 0) * scaleX;
+        const yPtTop = (f.y ?? 0) * scaleY;
+        const yPt = pageH - yPtTop - size;
+        page.drawText(String(val), { x: xPt, y: yPt, size, font, color: rgb(0, 0, 0) });
+      }
+    }
+
+    const out = await pdfDoc.save();
+    return new Blob([out], { type: 'application/pdf' });
+  }
+
+  async function exportSelectedPDF() {
+    const ids = getSelectedRows();
+    const list = pickRows(ids);
+    if (list.length === 0) {
+      alert('Select at least one row');
+      return;
+    }
+    const submission = list[0];
+    try {
+      // Try Edge Function first
+      const mapping = await getLatestMapping();
+      const body = {
+        mode: 'single',
+        submissions: [submission],
+        mapping: mapping?.mapping || mapping,
+        templateUrl: window.location.origin + '/IDEAS-TVET%20GBV%20Code%20of%20Conduct.pdf'
+      };
+      const { data, error } = await window.supabaseClient.functions.invoke('pdf-export', {
+        body,
+        headers: { Accept: 'application/octet-stream' },
+        responseType: 'arraybuffer'
+      });
+      if (error) throw error;
+      if (data) {
+        const blob = new Blob([data], { type: 'application/pdf' });
+        downloadBlob(blob, `${submission.full_name || 'submission'}.pdf`);
+        return;
+      }
+      // If no data, fall back
+      throw new Error('No binary returned from function');
+    } catch (e) {
+      console.warn('Edge Function failed or unavailable, falling back to client-side PDF', e);
+      try {
+        const mapping = await getLatestMapping();
+        const blob = await fillPdfClientSide(submission, mapping);
+        downloadBlob(blob, `${submission.full_name || 'submission'}.pdf`);
+      } catch (e2) {
+        alert('PDF export failed: ' + (e2.message || 'unknown error'));
+        console.error(e2);
+      }
+    }
+  }
+
+  async function exportSelectedZIP() {
+    const ids = getSelectedRows();
+    const list = pickRows(ids);
+    if (list.length === 0) {
+      alert('Select at least one row');
+      return;
+    }
+    try {
+      // Try Edge Function bulk
+      const mapping = await getLatestMapping();
+      const body = {
+        mode: 'bulk',
+        submissions: list,
+        mapping: mapping?.mapping || mapping,
+        templateUrl: window.location.origin + '/IDEAS-TVET%20GBV%20Code%20of%20Conduct.pdf'
+      };
+      const { data, error } = await window.supabaseClient.functions.invoke('pdf-export', {
+        body,
+        headers: { Accept: 'application/octet-stream' },
+        responseType: 'arraybuffer'
+      });
+      if (error) throw error;
+      if (data) {
+        const blob = new Blob([data], { type: 'application/zip' });
+        downloadBlob(blob, `submissions.zip`);
+        return;
+      }
+      throw new Error('No binary returned from function');
+    } catch (e) {
+      console.warn('Edge Function failed or unavailable, zipping client-side', e);
+      try {
+        await ensureJSZip();
+        const mapping = await getLatestMapping();
+        const zip = new window.JSZip();
+        for (const sub of list) {
+          const blob = await fillPdfClientSide(sub, mapping);
+          const ab = await blob.arrayBuffer();
+          const name = `${(sub.full_name || 'submission').replace(/[^a-z0-9_\-]+/gi,'_')}.pdf`;
+          zip.file(name, ab);
+        }
+        const out = await zip.generateAsync({ type: 'blob' });
+        downloadBlob(out, 'submissions.zip');
+      } catch (e2) {
+        alert('ZIP export failed: ' + (e2.message || 'unknown error'));
+        console.error(e2);
+      }
+    }
+  }
+
   function wireEvents() {
     const table = document.getElementById('table');
     const selectAll = document.getElementById('select-all');
@@ -228,8 +408,30 @@
       } else if (t.matches('button[data-action="save"]')) {
         const id = t.getAttribute('data-id');
         await saveEdit(id, t.closest('tr'));
+      } else if (t.matches('button[data-action="delete"]')) {
+        const id = t.getAttribute('data-id');
+        await deleteSubmission(id);
       }
     });
+  }
+
+  async function deleteSubmission(id) {
+    if (!confirm('Delete this submission? This cannot be undone.')) return;
+    try {
+      const { error } = await window.supabaseClient
+        .from('submissions')
+        .delete()
+        .eq('id', id);
+      if (error) {
+        alert('Delete failed: ' + (error.message || 'unknown error'));
+        return;
+      }
+      rows = rows.filter(r => r.id !== id);
+      render();
+    } catch (e) {
+      alert('Unexpected error during delete');
+      console.error(e);
+    }
   }
 
   async function logout() {
@@ -244,6 +446,9 @@
   window.exportSelectedCSV = exportSelectedCSV;
   window.exportSelectedHTML = exportSelectedHTML;
   window.exportSelectedDOCX = exportSelectedDOCX;
+  window.exportSelectedPDF = exportSelectedPDF;
+  window.exportSelectedZIP = exportSelectedZIP;
+  window.deleteSubmission = deleteSubmission;
   // Backward-compatible aliases in case HTML calls old names
   window.exportCSV = exportSelectedCSV;
   window.exportHTML = exportSelectedHTML;
